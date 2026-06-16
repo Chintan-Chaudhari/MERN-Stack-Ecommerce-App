@@ -32,7 +32,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: <DOCKER_REGISTRY>/fusion-electronics-frontend:canary
+        image: chintanchaudhari/fusion-electronics-frontend:v1
         imagePullPolicy: Always
         ports:
         - containerPort: 3000

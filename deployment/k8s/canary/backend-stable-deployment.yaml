@@ -27,15 +27,15 @@ spec:
         version: stable
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port: "5000"
+        prometheus.io/port: "8000"
         prometheus.io/path: "/metrics"
     spec:
       containers:
       - name: backend
-        image: <DOCKER_REGISTRY>/fusion-electronics-backend:stable
+        image: chintanchaudhari/fusion-electronics-backend:v2
         imagePullPolicy: Always
         ports:
-        - containerPort: 5000
+        - containerPort: 8000
           name: http
           protocol: TCP
         env:
@@ -91,7 +91,7 @@ spec:
         livenessProbe:
           httpGet:
             path: /health
-            port: 5000
+            port: 8000
           initialDelaySeconds: 60
           periodSeconds: 10
           timeoutSeconds: 5
@@ -99,7 +99,7 @@ spec:
         readinessProbe:
           httpGet:
             path: /health/ready
-            port: 5000
+            port: 8000
           initialDelaySeconds: 30
           periodSeconds: 5
           timeoutSeconds: 3
