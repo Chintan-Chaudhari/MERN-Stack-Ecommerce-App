@@ -4,7 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const seedDB = require('./seed/productSeeds');
-const syncPinecone = require('./sync/syncPinecone');
+//const syncPinecone = require('./sync/syncPinecone');
 const productRoutes = require('./routes/products');
 const checkoutRoutes = require('./routes/checkout');
 const orderRoutes = require('./routes/orders');
@@ -43,12 +43,12 @@ mongoose
     }
 
     // 2. Sync with Pinecone (primary recommendation engine)
-    try {
-      await syncPinecone();
-      console.log('✅ Pinecone synced');
-    } catch (err) {
-      console.error('❌ Pinecone sync error (continuing with fallbacks):', err);
-    }
+    //try {
+     // await syncPinecone();
+     // console.log('✅ Pinecone synced');
+    //} catch (err) {
+     // console.error('❌ Pinecone sync error (continuing with fallbacks):', err);
+    //}
 
     // 3. Start Express server
     app.listen(PORT, '0.0.0.0', () => {
@@ -73,6 +73,23 @@ app.get('/', (req, res) => {
 // Setup Swagger UI with customized title
 setupSwaggerJson(app); // serves /api-docs/swagger.json
 setupSwaggerUi(app);
+
+// Health routes
+
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    service: 'fusion-electronics-backend',
+    uptime: process.uptime()
+  });
+});
+
+app.get('/health/ready', (req, res) => {
+  res.status(200).json({
+    ready: true
+  });
+});
+
 
 // Routes
 app.use('/api/products', productRoutes);

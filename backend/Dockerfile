@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # Copy backend manifest so npm can resolve that workspace
-COPY backend/package.json backend/package.json
+COPY backend/package.json ./backend/package.json
 
 # Install ONLY the backend workspace using the root lockfile
 # (omit devDependencies for a lean runtime)
@@ -33,7 +33,7 @@ COPY backend/ backend/
 WORKDIR /app/backend
 
 # Expose the port your app listens on
-EXPOSE 3000
+EXPOSE 8000
 
 # Start your app
 CMD ["node", "index.js"]
