@@ -724,3 +724,4 @@ Fusion Electronics was created with ❤️ by:
 Thank you for exploring **Fusion Electronics - a MERN Stack E-commerce Application**! If you have any questions or feedback, feel free to reach out or open an issue.
 
 **Happy coding! 🚀**
+# MERN-Stack-Ecommerce-App
