@@ -1,0 +1,367 @@
+pipeline {
+
+    agent any
+
+    environment {
+
+        GIT_REPO='https://github.com/Chintan-Chaudhari/MERN-Stack-Ecommerce-App.git'
+        GIT_BRANCH='main'
+
+        APP_NAME='fusion-electronics'
+
+        DOCKER_REGISTRY='docker.io/chintanchaudhari'
+
+        FRONTEND_IMAGE="${DOCKER_REGISTRY}/${APP_NAME}-frontend"
+
+        BACKEND_IMAGE="${DOCKER_REGISTRY}/${APP_NAME}-backend"
+
+        BUILD_TAG="${BUILD_NUMBER}"
+
+        K8S_NAMESPACE='fusion-ecommerce'
+        
+    }
+
+    stages {
+
+        stage('Clean Workspace') {
+
+            steps {
+
+                cleanWs()
+
+            }
+
+        }
+
+        stage('Git Clone') {
+
+            steps {
+
+                sh '''
+
+                git clone -b ${GIT_BRANCH} ${GIT_REPO}
+
+                ls -la
+
+                '''
+
+            }
+
+        }
+        stage('Code Quality & Security') {
+
+            parallel {
+
+                stage('Frontend Lint') {
+
+                    steps {
+
+                    sh '''
+
+                    cd MERN-Stack-Ecommerce-App
+
+                    echo "Running Frontend Lint"
+
+                    npm install --legacy-peer-deps
+
+                    npm run lint || true
+
+                    '''
+
+                }
+
+            }
+
+
+            stage('Backend Security Scan') {
+
+                steps {
+
+                    sh '''
+
+                    cd MERN-Stack-Ecommerce-App/backend
+
+                    echo "Running Backend Security Scan"
+
+                    npm install
+
+                    npm audit --audit-level=moderate || true
+
+                    '''
+
+                }
+
+            }
+
+
+            stage('Code Coverage') {
+
+                steps {
+
+                    sh '''
+
+                    cd MERN-Stack-Ecommerce-App
+
+                    echo "Running Frontend Coverage"
+
+                    npm run test:coverage || true
+
+                    cd backend
+
+                    echo "Running Backend Coverage"
+
+                    npm run test:coverage || true
+
+                    '''
+
+                }
+
+            }
+
+        }
+
+    }
+
+        stage('Verify Files') {
+
+            steps {
+
+                sh '''
+
+                cd MERN-Stack-Ecommerce-App
+
+                pwd
+
+                echo "Root Files"
+
+                ls -la
+
+                echo ""
+
+                echo "Backend Files"
+
+                ls -la backend
+
+                '''
+
+            }
+
+        }
+
+
+        stage('SonarQube Analysis') {
+
+            steps {
+
+                script {
+
+                    def scannerHome = tool 'SonarScanner'
+
+                    withSonarQubeEnv('SonarQube') {
+
+                    sh """
+
+                    cd MERN-Stack-Ecommerce-App
+
+                    ${scannerHome}/bin/sonar-scanner \
+                    -Dsonar.projectKey=fusion-electronics \
+                    -Dsonar.projectName="Fusion Electronics" \
+                    -Dsonar.projectVersion=${BUILD_TAG} \
+                    -Dsonar.sources=. \
+                    -Dsonar.exclusions=node_modules/**,build/**,coverage/** \
+                    -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+
+                    """
+
+                }
+
+            }
+
+        }
+
+    }
+
+
+        stage('Quality Gate') {
+
+            steps {
+
+                timeout(time: 5, unit: 'MINUTES') {
+
+                    waitForQualityGate abortPipeline: true
+
+            }
+
+        }
+
+    }
+        stage('Build Frontend Docker Image') {
+
+            steps {
+
+                sh '''
+
+                cd MERN-Stack-Ecommerce-App
+
+                docker build \
+                -t ${FRONTEND_IMAGE}:${BUILD_TAG} \
+                -t ${FRONTEND_IMAGE}:latest \
+                .
+
+                '''
+
+            }
+
+        }
+
+        stage('Build Backend Docker Image') {
+
+            steps {
+
+                sh '''
+
+                cd MERN-Stack-Ecommerce-App
+
+                docker build \
+                -f backend/Dockerfile \
+                -t ${BACKEND_IMAGE}:${BUILD_TAG} \
+                -t ${BACKEND_IMAGE}:latest \
+                .
+
+                '''
+
+            }
+
+        }
+
+        stage('Docker Login') {
+
+            steps {
+
+                withCredentials([
+
+                    usernamePassword(
+                        credentialsId: 'dockerhub',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+
+                ]) {
+
+                    sh '''
+
+                    echo "$DOCKER_PASS" | docker login \
+                    -u "$DOCKER_USER" \
+                    --password-stdin
+
+                    '''
+
+                }
+
+            }
+
+        }
+
+        stage('Push Frontend Image') {
+
+            steps {
+
+                sh '''
+
+                docker push ${FRONTEND_IMAGE}:${BUILD_TAG}
+
+                docker push ${FRONTEND_IMAGE}:latest
+
+                '''
+
+            }
+
+        }
+
+        stage('Push Backend Image') {
+
+            steps {
+
+                sh '''
+
+                docker push ${BACKEND_IMAGE}:${BUILD_TAG}
+
+                docker push ${BACKEND_IMAGE}:latest
+
+                '''
+
+            }
+
+        }
+
+        stage('Deploy to Kubernetes') {
+
+            steps {
+
+                withCredentials([
+
+                    file(
+                        credentialsId: 'kubeconfig',
+                        variable: 'KUBECONFIG'
+                    )
+
+                ]) {
+
+                    sh '''
+
+                    export KUBECONFIG=$KUBECONFIG
+
+                    kubectl get nodes
+
+                    kubectl get pods -n ${K8S_NAMESPACE}
+
+                    kubectl rollout restart deployment/fusion-electronics-frontend \
+                    -n ${K8S_NAMESPACE}
+
+                    kubectl rollout restart deployment/fusion-electronics-backend \
+                    -n ${K8S_NAMESPACE}
+
+                    kubectl rollout status deployment/fusion-electronics-frontend \
+                    -n ${K8S_NAMESPACE}
+
+                    kubectl rollout status deployment/fusion-electronics-backend \
+                    -n ${K8S_NAMESPACE}
+
+                    '''
+
+                   }
+
+                }
+
+            }
+
+        }
+    
+
+        post {
+
+            success {
+
+                echo 'Deployment Successful'
+
+            }
+
+            failure {
+
+                echo 'Deployment Failed'
+
+            }
+
+            always {
+
+                cleanWs()
+
+        }
+
+    }
+
+}
+    
+
+
+
