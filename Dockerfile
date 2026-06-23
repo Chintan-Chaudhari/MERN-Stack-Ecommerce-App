@@ -26,7 +26,8 @@ WORKDIR /usr/share/nginx/html
 
 # Remove default content, then copy in our build
 RUN rm -rf ./*
-COPY --from=builder /app/build ./
+COPY --from=builder /app/build /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
