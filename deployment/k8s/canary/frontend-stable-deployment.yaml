@@ -32,7 +32,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: chintanchaudhari/fusion-electronics-frontend:v1
+        image: chintanchaudhari/fusion-electronics-frontend:18
         imagePullPolicy: Always
         ports:
         - containerPort: 80

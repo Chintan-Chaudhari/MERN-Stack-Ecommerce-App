@@ -32,7 +32,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: chintanchaudhari/fusion-electronics-backend:v2
+        image: chintanchaudhari/fusion-electronics-backend:18
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
